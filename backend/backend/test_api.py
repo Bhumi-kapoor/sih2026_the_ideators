@@ -1,6 +1,6 @@
 import requests
 
-url = "http://127.0.0.1:8000/api/v1/extract-voice"
+url = "http://127.0.0.1:8000/api/v1/process_audio"
 audio_file_path = "distress_sample.wav"
 
 try:
@@ -12,19 +12,26 @@ try:
         
     if response.status_code == 200:
         result = response.json()
-        print("\n✅ SATYA Unified Architecture Execution Successful!")
+        print("\n✅ SATYA Privacy Architecture Execution Successful!")
         print("=" * 60)
         
-        # 🗣️ LAYER 1 OUTPUT PARSING
+        # 🗣️ LAYER 1 OUTPUT PRINT
         print("🗣️ [LAYER 1] Extracted Voice Text:")
         print(f"   👉 {result['layer_1_output']['extracted_text']}")
         print("-" * 60)
         
-        # 📊 LAYER 2 OUTPUT PARSING
+        # 🧠 LAYER 2 OUTPUT PRINT
         print("🧠 [LAYER 2] MuRIL Indic NLP Processing Metrics:")
-        print(f"   👉 Status: {result['layer_2_output']['nlp_status']}")
-        print(f"   👉 Character Count: {result['layer_2_output']['metrics']['character_count']}")
         print(f"   👉 Embedding Tensor Dimensions: {result['layer_2_output']['metrics']['embedding_shape']}")
+        print("-" * 60)
+        
+        # 🛡️ LAYER 3 OUTPUT PRINT (This was missing!)
+        triage = result['layer_3_decision_core']['triage_data']
+        print("🛡️ [LAYER 3] Localized DeepSeek Decision Core Outputs:")
+        print(f"   👉 Primary Emergency Sector: 【{triage.get('primary_emergency_type')}】")
+        print(f"   👉 Calculated Distress Score: {triage.get('distress_score')}/100")
+        print(f"   👉 System Severity Level:    {triage.get('severity_score')}/100")
+        print(f"   👉 System Justification:     {triage.get('justification')}")
         print("=" * 60)
     else:
         print(f"❌ Server Error ({response.status_code}): {response.text}")

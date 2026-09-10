@@ -1,11 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from transcriber import transcribe_audio
-from nlp_engine import analyze_text_embeddings  # <-- Placed correctly at the top
+from nlp_engine import analyze_text_embeddings
+from decision_core import calculate_distress_metrics  # <-- 🧠 LAYER 3 INTEGRATED HERE
 import shutil
 import os
 
-app = FastAPI(title="SATYA Unified Engine: Layers 1 & 2")
+app = FastAPI(title="SATYA End-to-End Privacy Engine: Layers 1, 2 & 3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/api/v1/extract-voice")
+@app.post("/api/v1/process_audio")
 async def extract_voice_signal(file: UploadFile = File(...)):
     if not file.filename.endswith(('.wav', '.mp3', '.ogg', '.m4a')):
         raise HTTPException(
@@ -28,14 +29,17 @@ async def extract_voice_signal(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
         
     try:
-        # LAYER 1: Extract text from the audio waves using Whisper
+        # LAYER 1: Transcribe Audio Speech locally via Whisper
         transcribed_text = transcribe_audio(temp_file_path)
         os.remove(temp_file_path)
         
-        # LAYER 2: Pipe that text instantly into MuRIL for Indic NLP Processing
+        # LAYER 2: Context Semantic Embedding map locally via MuRIL
         nlp_analysis = analyze_text_embeddings(transcribed_text)
         
-        # Combined Unified API Response
+        # LAYER 3: Decision Metric Triage calculations completely locally via DeepSeek-R1 1.5B
+        decision_metrics = calculate_distress_metrics(transcribed_text)
+        
+        # Unified Multi-Layer API Response Output Block
         return {
             "status": "success",
             "layer_1_output": {
@@ -44,6 +48,10 @@ async def extract_voice_signal(file: UploadFile = File(...)):
             "layer_2_output": {
                 "nlp_status": "Context vector generated successfully",
                 "metrics": nlp_analysis
+            },
+            "layer_3_decision_core": {
+                "status": "Localized offline evaluation complete",
+                "triage_data": decision_metrics
             }
         }
         
