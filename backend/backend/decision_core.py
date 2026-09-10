@@ -4,19 +4,32 @@ import re
 
 def calculate_distress_metrics(transcribed_text: str):
     """
-    LAYER 3 Centralized Decision Core: Fully offline DeepSeek-R1 logic mapping
-    threat vectors, active timelines, and target categories.
+    LAYER 3 Centralized Decision Core: High-security local triage processing.
+    Includes deterministic rule catches for short high-danger emergency markers.
     """
+    # Clean text for reliable string verification
+    clean_text = transcribed_text.lower().strip()
+    
+    # 🚨 HARD TRIGGER RULE MATRIX: Catch short, immediate live crisis calls instantly
+    live_crisis_keywords = ["emergency", "help me", "accident", "attack", "police", "ambulance"]
+    if any(keyword in clean_text for keyword in live_crisis_keywords) and len(clean_text.split()) < 6:
+        return {
+            "distress_score": 95,
+            "severity_score": 95,
+            "incident_timeline": "ACTIVE",
+            "primary_emergency_type": "POLICE",
+            "justification": "Deterministic live crisis trigger activated based on high-threat keyword indicators."
+        }
+
     system_prompt = (
         "You are the Centralized Decision Core of an emergency response platform named SATYA.\n"
         "Analyze the citizen distress text and output a strict JSON object.\n"
         "CRUCIAL DUAL-MODE ROUTING RULES:\n"
-        "1. If the incident timeline is 'ACTIVE' (happening right now) and involves a physical threat, "
-        "injury, or immediate crisis, you MUST set 'primary_emergency_type' to 'POLICE', 'AMBULANCE', or 'FIRE'.\n"
-        "2. If the user mentions misbehavior, discrimination, insults, or atrocities targeted at "
-        "Scheduled Castes (SC) or Scheduled Tribes (ST), you MUST set 'primary_emergency_type' to 'SC_ST_ATROCITY'.\n"
-        "3. If the timeline is 'HISTORICAL' (past event) and involves personal trauma/emotional pain, "
-        "set 'primary_emergency_type' to 'COUNSELING'.\n"
+        "1. If the incident timeline is 'ACTIVE' (happening right now, e.g., 'emergency', 'help', 'right now') "
+        "and involves an immediate crisis, you MUST set 'incident_timeline' to 'ACTIVE' and 'primary_emergency_type' to 'POLICE', 'AMBULANCE', or 'FIRE'.\n"
+        "2. If the user mentions misbehavior, discrimination, or atrocities targeted at Scheduled Castes (SC) or Scheduled Tribes (ST), "
+        "set 'primary_emergency_type' to 'SC_ST_ATROCITY' and timeline to 'HISTORICAL' unless it is happening right now.\n"
+        "3. If the timeline is 'HISTORICAL' (past event) and involves personal trauma, set 'primary_emergency_type' to 'COUNSELING' and timeline to 'HISTORICAL'.\n"
         "Your response MUST be a valid JSON object matching this schema exactly:\n"
         "{\n"
         "  \"distress_score\": <integer 0-100>,\n"
@@ -40,9 +53,9 @@ def calculate_distress_metrics(transcribed_text: str):
         clean_content = re.sub(r'<think>.*?</think>', '', raw_content, flags=re.DOTALL).strip()
         
         if "```json" in clean_content:
-            clean_content = clean_content.split("```json")[1].split("```")[0].strip()
+            clean_content = clean_content.split("```json").split("```").strip()
         elif "```" in clean_content:
-            clean_content = clean_content.split("```")[1].split("```")[0].strip()
+            clean_content = clean_content.split("```").split("```").strip()
 
         parsed_json = json.loads(clean_content)
         return parsed_json

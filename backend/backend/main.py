@@ -22,7 +22,7 @@ app.add_middleware(
 async def extract_voice_signal(file: UploadFile = File(...)):
     if not file.filename.endswith(('.wav', '.mp3', '.ogg', '.m4a')):
         raise HTTPException(status_code=400, detail="Invalid audio format.")
-    temp_file_path = f"temp_{file.filename}"
+    temp_file_path = f"temp_{os.path.basename(file.filename)}"
     with open(temp_file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     try:
