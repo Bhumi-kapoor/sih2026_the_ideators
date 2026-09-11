@@ -240,6 +240,18 @@
         riskTier: "MODERATE",
         requiredServices: ["counselor", "legal"],
         rationale: "⏳ PAST INCIDENT: Historical SC/ST PoA harassment → Recommending direct DLSA Legal Advocate & Counselor selection."
+      },
+      {
+        id: "preset-5",
+        title: "⏳ Past Case: Mentally Harassed Last Year (Past Incident)",
+        isPastCase: true,
+        speechText: "I was mentally harassed last year at my workplace. I am safe now but need legal aid and psychological counseling.",
+        englishText: "I was mentally harassed last year at my workplace. I am safe now but need legal aid and psychological counseling.",
+        distressScore: 72,
+        severityScore: 62,
+        riskTier: "HIGH",
+        requiredServices: ["counselor", "legal"],
+        rationale: "⏳ PAST INCIDENT: Historical mental harassment from last year → Bypassing physical police dispatch & automatically recommending DLSA Legal Counsel & Certified Counselor."
       }
     ];
 
@@ -795,6 +807,24 @@
                     <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-1">
                       <span className="text-slate-400 font-bold uppercase block">💡 AI RATIONALE & CASE ROUTING REASON:</span>
                       <p className="text-slate-200 font-semibold">{computedCase.simpleReason}</p>
+                    </div>
+
+                    {/* DeepSeek-R1 Chain-of-Thought (<think>) Reasoning Panel */}
+                    <div className="p-5 rounded-2xl bg-slate-950 border border-purple-500/50 space-y-3 font-mono text-xs">
+                      <div className="flex items-center justify-between border-b border-purple-900/60 pb-2">
+                        <span className="text-purple-300 font-bold uppercase flex items-center gap-2">
+                          🧠 DEEPSEEK-R1 CHAIN-OF-THOUGHT REASONING (&lt;think&gt;):
+                        </span>
+                        <span className="bg-purple-950 text-purple-200 px-2.5 py-1 rounded-full text-[10px] border border-purple-700 font-bold">
+                          Self-Reasoning Active
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-purple-200/90 leading-relaxed font-mono text-[11px] space-y-1.5">
+                        <p><strong className="text-slate-400">Step 1 (Temporal Context):</strong> Statement analyzed: <em>"{computedCase.transcript}"</em>. Identified timeline as <strong>{computedCase.isPastCase ? "HISTORICAL / PAST TRAUMA (e.g. last year)" : "ACTIVE LIVE EMERGENCY (happening right now)"}</strong>.</p>
+                        <p><strong className="text-slate-400">Step 2 (Threat Evaluation):</strong> {computedCase.isPastCase ? "No active forced entry or live physical breach present right now." : "Immediate physical threat or forced entry detected."}</p>
+                        <p><strong className="text-slate-400">Step 3 (Police Dispatch Filter):</strong> {computedCase.isPastCase ? "🚫 Suppressing Police PCR Emergency Sirens (Physical police dispatch unnecessary)." : "⚡ Triggering immediate 1.4-min Police PCR Emergency Dispatch."}</p>
+                        <p><strong className="text-slate-400">Step 4 (Service Recommendation):</strong> {computedCase.isPastCase ? "Direct routing to DLSA Legal Aid Advocate Assignment & Certified Trauma Counselor." : "Police Patrol Van & Ambulance EMS Medical standby."}</p>
+                      </div>
                     </div>
 
                     {/* DeepSeek AI Help Required Suggestions Card */}
