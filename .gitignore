@@ -1,0 +1,16 @@
+# Node dependencies
+node_modules/
+dist/
+.env
+
+# Python / Virtualenv
+__pycache__/
+*.pyc
+venv/
+.venv/
+.pytest_cache/
+
+# IDE / OS
+.vscode/
+.DS_Store
+*.log

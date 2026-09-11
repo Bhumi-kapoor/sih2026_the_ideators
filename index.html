@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SATYA — Speech-to-Text Triage & Emergency/Counselor Response Platform (SIH 2026 / PS 26093)</title>
+  <meta name="description" content="Speech-to-text triage, AI scoring, active vs past case action routing, and counselor selection platform." />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- React & ReactDOM Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for JSX compilation in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            heading: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --accent-cyan: #06b6d4;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(14, 116, 144, 0.25) 0px, transparent 55%),
+        radial-gradient(at 85% 85%, rgba(99, 102, 241, 0.20) 0px, transparent 55%),
+        radial-gradient(at 50% 50%, rgba(7, 10, 18, 0.98) 0px, transparent 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.45);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-panel:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .btn-cyber {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(59, 130, 246, 0.3));
+      border: 1px solid #06b6d4;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      padding: 0.6rem 1.3rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-cyber:hover {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.5), rgba(59, 130, 246, 0.5));
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.45);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(185, 28, 28, 0.35));
+      border: 1px solid #ef4444;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      padding: 0.6rem 1.3rem;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .btn-danger:hover {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.55), rgba(185, 28, 28, 0.55));
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+    }
+    .badge-critical {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1.5px solid #ef4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    }
+    .badge-high {
+      background: rgba(249, 115, 22, 0.2);
+      color: #fdba74;
+      border: 1.5px solid #f97316;
+    }
+    .badge-moderate {
+      background: rgba(234, 179, 8, 0.2);
+      color: #fde047;
+      border: 1.5px solid #eab308;
+    }
+    .wave-bar {
+      width: 4px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #06b6d4, #3b82f6);
+      animation: wavePulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes wavePulse {
+      0% { height: 15%; opacity: 0.4; }
+      100% { height: 100%; opacity: 1; }
+    }
+  </style>
+</head>
+<body class="antialiased text-slate-100">
+  <div id="root"></div>
+
+  <!-- Main Application Script -->
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Counselor Database
+    const COUNSELORS_DATABASE = [
+      {
+        id: "c-101",
+        name: "Dr. Meenakshi Kaur",
+        role: "Senior Trauma & Crisis Psychologist",
+        avatar: "👩‍⚕️",
+        rating: 4.9,
+        reviewCount: 184,
+        experienceYears: 12,
+        specializations: ["Past Trauma Recovery", "Domestic Violence Counseling", "PTSD Stabilization"],
+        languages: ["Hindi", "Punjabi", "English"],
+        availability: "Available Now (Est. 5 mins)",
+        topReview: "Extremely compassionate. Helped me work through past trauma and gave clear recovery guidance.",
+        verifiedId: "DLSA-COUNSEL-8821"
+      },
+      {
+        id: "c-102",
+        name: "Adv. Rahul Sharma",
+        role: "DLSA Legal Counsel & SC/ST Protection Advocate",
+        avatar: "👨‍⚖️",
+        rating: 4.8,
+        reviewCount: 142,
+        experienceYears: 9,
+        specializations: ["Past Case Filing", "SC/ST PoA Act", "DLSA Free Legal Aid"],
+        languages: ["Hindi", "English"],
+        availability: "Available Now (Est. 10 mins)",
+        topReview: "Helped me file legal papers for a past incident. Professional and trustworthy.",
+        verifiedId: "BAR-PUNJAB-4412"
+      },
+      {
+        id: "c-103",
+        name: "Priya Venkatesh",
+        role: "Cyber Harassment & Digital Abuse Counselor",
+        avatar: "👩‍💻",
+        rating: 4.9,
+        reviewCount: 98,
+        experienceYears: 7,
+        specializations: ["Past Cyber Stalking", "Online Harassment", "Privacy Recovery"],
+        languages: ["English", "Hindi"],
+        availability: "Available in 15 mins",
+        topReview: "Empathetic and expert in dealing with cyber harassment cases that happened previously.",
+        verifiedId: "CYBER-CELL-7729"
+      },
+      {
+        id: "c-104",
+        name: "Dr. Gurpreet Singh",
+        role: "Emergency Task Force & Crisis Counselor",
+        avatar: "👨‍⚕️",
+        rating: 4.7,
+        reviewCount: 156,
+        experienceYears: 14,
+        specializations: ["Active Crisis Liaison", "Emergency Dispatch", "High-Threat Conflict"],
+        languages: ["Punjabi", "Hindi"],
+        availability: "Available Now",
+        topReview: "Swiftly coordinated police PCR escort while keeping victim calm on the phone.",
+        verifiedId: "POLICE-MED-3390"
+      }
+    ];
+
+    const SAMPLE_SPEECH_PRESETS = [
+      {
+        id: "preset-1",
+        title: "🚨 Active Threat: Door Breach (Happening Now)",
+        isPastCase: false,
+        speechText: "मदद कीजिए! कोई मेरा पीछा कर रहा है और अभी दरवाज़ा तोड़ने की कोशिश कर रहा है! मुझे बहुत डर लग रहा है!",
+        englishText: "Help me! Someone is following me and trying to break down the door right now! I am terrified!",
+        distressScore: 94,
+        severityScore: 92,
+        riskTier: "CRITICAL",
+        requiredServices: ["police", "ambulance"],
+        rationale: "🚨 ACTIVE EMERGENCY: Active forced entry + immediate physical danger → Recommending Police PCR Dispatch & Ambulance standby."
+      },
+      {
+        id: "preset-2",
+        title: "🔥 Active Emergency: Arson & Fire Hazard (Happening Now)",
+        isPastCase: false,
+        speechText: "यहाँ आग लगा दी गई है और धुआँ भर रहा है! जल्दी मदद भेजो!",
+        englishText: "Someone set fire outside my home and smoke is filling up! Send help fast!",
+        distressScore: 96,
+        severityScore: 95,
+        riskTier: "CRITICAL",
+        requiredServices: ["fire", "ambulance", "police"],
+        rationale: "🔥 ACTIVE EMERGENCY: Fire hazard & smoke inhalation risk → Recommending Fire Truck & Ambulance dispatch."
+      },
+      {
+        id: "preset-3",
+        title: "⏳ Past Case: Previous Harassment & Trauma (Past Incident)",
+        isPastCase: true,
+        speechText: "पिछले महीने मेरे साथ घर पर हिंसा हुई थी। मैं अब सुरक्षित स्थान पर हूँ लेकिन डिप्रेशन और डर से नहीं उबर पा रही हूँ।",
+        englishText: "I faced domestic violence at home last month. I am in a safe place now, but I am struggling with severe depression and trauma.",
+        distressScore: 78,
+        severityScore: 60,
+        riskTier: "HIGH",
+        requiredServices: ["counselor", "legal"],
+        rationale: "⏳ PAST INCIDENT: Historical trauma reported with victim now in safe location → Bypassing emergency dispatch & recommending Counselors directly."
+      },
+      {
+        id: "preset-4",
+        title: "⏳ Past Case: Old Land Dispute & Caste Slurs (Past Incident)",
+        isPastCase: true,
+        speechText: "ਪਿਛਲੇ ਹਫ਼ਤੇ ਜ਼ਮੀਨੀ ਵਿਵਾਦ ਵੇਲੇ ਕੁਝ ਲੋਕਾਂ ਨੇ ਜਾਤੀਵਾਦੀ ਗਾਲਾਂ ਕੱਢੀਆਂ ਸੀ। ਮੈਨੂੰ ਕਾਨੂੰਨੀ ਮਦਦ ਚਾਹੀਦੀ ਹੈ।",
+        englishText: "Last week during a land dispute, some people used casteist slurs against me. I need legal help and counseling.",
+        distressScore: 65,
+        severityScore: 68,
+        riskTier: "MODERATE",
+        requiredServices: ["counselor", "legal"],
+        rationale: "⏳ PAST INCIDENT: Historical SC/ST PoA harassment → Recommending direct DLSA Legal Advocate & Counselor selection."
+      }
+    ];
+
+    const INITIAL_CASES = [
+      {
+        id: "SATYA-2026-8941",
+        timestamp: "2 mins ago",
+        channel: "Speech-to-Text Voice Intake",
+        isPastCase: false,
+        transcript: "मदद कीजिए! कोई मेरा पीछा कर रहा है और अभी दरवाज़ा तोड़ने की कोशिश कर रहा है!",
+        englishTranslation: "Help me! Someone is following me and trying to break down the door right now!",
+        distressScore: 94,
+        severityScore: 92,
+        riskTier: "CRITICAL",
+        simpleReason: "🚨 Active physical threat: Forced door breach happening right now.",
+        actionTaken: "Dispatched Police PCR Van & Ambulance Standby",
+        assignedCounselor: COUNSELORS_DATABASE[0],
+        status: "Active Emergency Dispatch Sent"
+      }
+    ];
+
+    // Connection bridge function to simulate backend voice signal processing
+    async function processVoiceSignalToBackend(audioBlob) {
+      console.log("Transmitting voice signal to SATYA 5-Layer Backend...", audioBlob);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const isPast = audioBlob && audioBlob.isPastCase;
+      const isThreat = audioBlob && (audioBlob.speechText?.includes('मदद') || audioBlob.speechText?.includes('kill') || audioBlob.speechText?.includes('door') || audioBlob.speechText?.includes('पीछा'));
+
+      return {
+        status: "success",
+        timestamp: new Date().toISOString(),
+        layer_1_voice_signal_extraction: {
+          stt_engine: "Bhashini API / Bhashini-Whisper",
+          wav2vec2_prosody: { pitch_tremor_percent: isThreat ? 88 : 62, speech_pace_wpm: isThreat ? 215 : 175 },
+          transcript: audioBlob?.speechText || "Voice intake processed."
+        },
+        layer_2_text_nlp_processing: {
+          nlp_engine: "MuRIL / IndicBERT (via Hugging Face)",
+          distress_markers: isThreat ? ["Active Forced Entry", "Death Threat", "Vocal Panic"] : ["Past Trauma", "Legal Aid Inquiry"]
+        },
+        layer_3_explainable_scoring: {
+          engine: "Claude 3.5 Sonnet",
+          distress_vulnerability_score: isThreat ? 94 : 78,
+          incident_severity_score: isThreat ? 92 : 60,
+          risk_tier: isThreat ? "CRITICAL" : "HIGH"
+        },
+        layer_4_smart_action_routing: {
+          routing_action: {
+            incident_classification: isPast ? "PAST_INCIDENT" : "ACTIVE_EMERGENCY",
+            recommended_services: isPast ? ["counselor_appointment", "dlsa_legal_aid"] : ["police_pcr_15min_sla", "ambulance_ems"],
+            siren_alert_text: isPast ? "⏳ PAST CASE DETECTED: Opening Counselor Directory Cards Directly" : "🚨 1.4-MIN PCR SIREN ALERT: Emergency Police PCR Van Dispatched To GPS Location",
+            rationale: isPast 
+              ? "⏳ PAST INCIDENT: Historical trauma reported. Bypassing physical dispatch & opening Counselor Directory directly."
+              : "🚨 ACTIVE EMERGENCY: Active forced entry + immediate physical danger → Recommending Police PCR Dispatch & Ambulance standby."
+          }
+        },
+        layer_5_human_in_the_loop: {
+          counselor_directory: COUNSELORS_DATABASE
+        }
+      };
+    }
+
+    /**
+     * FEATURE 2: Sends the victim's selected counselor choice token back to the backend.
+     */
+    async function submitCounselorOverrideToBackend(counselorName, rawCaseText) {
+        const BACKEND_BASE_URL = "http://127.0.0.1:8000/api/v1";
+        const url = `${BACKEND_BASE_URL}/assign-counselor`;
+        try {
+            console.log("📡 Dispatching selection handshake for counselor:", counselorName);
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chosen_counselor: counselorName, case_text: rawCaseText })
+            });
+            if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error("💥 Failed to dispatch selection handshake:", error);
+            return null;
+        }
+    }
+
+
+    // --- Main Application Component ---
+    function App() {
+      const [activeTab, setActiveTab] = useState('wizard'); // 'wizard' | 'dashboard' | 'directory'
+      const [cases, setCases] = useState(INITIAL_CASES);
+
+      // Wizard State
+      const [currentStep, setCurrentStep] = useState(1);
+      const [selectedPreset, setSelectedPreset] = useState(SAMPLE_SPEECH_PRESETS[0]);
+      const [isPastCaseToggle, setIsPastCaseToggle] = useState(false);
+      const [isRecording, setIsRecording] = useState(false);
+      const [speechTextStream, setSpeechTextStream] = useState('');
+      const [computedCase, setComputedCase] = useState(null);
+      const [selectedAction, setSelectedAction] = useState(null);
+      const [selectedCounselor, setSelectedCounselor] = useState(null);
+
+      // Sync preset past case status
+      const handlePresetChange = (preset) => {
+        setSelectedPreset(preset);
+        setIsPastCaseToggle(preset.isPastCase);
+        setSpeechTextStream('');
+      };
+
+      const startSpeechIntake = () => {
+        setIsRecording(true);
+        setSpeechTextStream('');
+        let idx = 0;
+        const fullText = selectedPreset.speechText;
+        const timer = setInterval(() => {
+          idx += 3;
+          if (idx <= fullText.length) {
+            setSpeechTextStream(fullText.substring(0, idx));
+          } else {
+            setSpeechTextStream(fullText);
+            clearInterval(timer);
+          }
+        }, 100);
+      };
+
+      // Voice Submit Handler wired to API Bridge
+      const handleVoiceSubmit = async (audioBlob) => {
+        // 1. Call our newly added JavaScript connection function
+        const backendResponse = await processVoiceSignalToBackend(audioBlob);
+        
+        if (backendResponse) {
+          // 2. Extract the Layer 4 logic parameters
+          const routingData = backendResponse.layer_4_smart_action_routing.routing_action;
+          const triageMode = routingData.incident_classification;
+          
+          console.log("Triage Category Evaluated:", triageMode);
+          
+          // 3. Update React state array hooks to update the user interface screen!
+          setIsRecording(false);
+          const scoreData = backendResponse.layer_3_explainable_scoring;
+          const sttData = backendResponse.layer_1_voice_signal_extraction;
+
+          const caseData = {
+            id: `SATYA-2026-${Math.floor(1000 + Math.random()*9000)}`,
+            timestamp: "Just now",
+            channel: "Speech-to-Text Voice Intake",
+            isPastCase: triageMode === "PAST_INCIDENT",
+            language: selectedPreset.id.includes('4') ? 'Punjabi' : selectedPreset.id.includes('3') ? 'English' : 'Hindi',
+            transcript: speechTextStream || sttData.transcript,
+            englishTranslation: selectedPreset.englishText,
+            distressScore: scoreData.distress_vulnerability_score,
+            severityScore: scoreData.incident_severity_score,
+            riskTier: scoreData.risk_tier,
+            requiredServices: routingData.recommended_services,
+            simpleReason: routingData.rationale,
+            sirenAlertText: routingData.siren_alert_text
+          };
+
+          setComputedCase(caseData);
+          setCurrentStep(2);
+
+          if (triageMode === "PAST_INCIDENT") {
+            console.log("UI Update: Pop up Counselor Directory Cards directly!");
+          } else {
+            console.log("UI Update: Show 1.4-min PCR Siren Alert & Police Dispatch!");
+          }
+        }
+      };
+
+      const finishSpeechIntake = () => {
+        handleVoiceSubmit({
+          ...selectedPreset,
+          speechText: speechTextStream || selectedPreset.speechText,
+          isPastCase: isPastCaseToggle
+        });
+      };
+
+      const handleConfirmSelection = (counselor) => {
+        setSelectedCounselor(counselor);
+        const finalCaseRecord = {
+          ...computedCase,
+          actionTaken: selectedAction ? selectedAction.title : (computedCase.isPastCase ? "Direct Counselor Assignment" : "Emergency Units Dispatched"),
+          assignedCounselor: counselor,
+          status: computedCase.isPastCase ? `Past Case Counselor Assigned: ${counselor.name}` : `Active Emergency Dispatched & Counselor Assigned: ${counselor.name}`
+        };
+
+        setCases(prev => [finalCaseRecord, ...prev]);
+        setCurrentStep(4);
+      };
+
+      const resetWizard = () => {
+        setCurrentStep(1);
+        setSpeechTextStream('');
+        setComputedCase(null);
+        setSelectedAction(null);
+        setSelectedCounselor(null);
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          
+          {/* Header */}
+          <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/20 border border-cyan-400/40">
+                  🛡️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent">
+                      SATYA
+                    </h1>
+                    <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-cyan-950 border border-cyan-500/40 text-cyan-300">
+                      SIH 2026 • PS 26093
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono">Real-Time Active Emergency & Past Case Counselor Triage System</p>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <nav className="flex items-center p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 text-xs font-heading font-semibold">
+                <button
+                  onClick={() => setActiveTab('wizard')}
+                  className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                    activeTab === 'wizard' ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🎙️ Triage Wizard</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('directory')}
+                  className={`px-5 py-2.5 rounded-xl transition-all ${
+                    activeTab === 'directory' ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>👩‍⚕️ Counselor Directory & Reviews</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-5 py-2.5 rounded-xl transition-all ${
+                    activeTab === 'dashboard' ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📊 Case Dashboard ({cases.length})</span>
+                </button>
+              </nav>
+
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            
+            {/* WIZARD MODE */}
+            {activeTab === 'wizard' && (
+              <div className="space-y-6">
+                
+                {/* Progress Bar */}
+                <div className="glass-panel p-5 grid grid-cols-4 gap-2 text-center text-xs font-mono">
+                  <div className={`p-3 rounded-xl border transition-all ${currentStep === 1 ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' : currentStep > 1 ? 'bg-slate-900 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}>
+                    <span>1. Speech Intake</span>
+                  </div>
+                  <div className={`p-3 rounded-xl border transition-all ${currentStep === 2 ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' : currentStep > 2 ? 'bg-slate-900 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}>
+                    <span>2. AI Scoring</span>
+                  </div>
+                  <div className={`p-3 rounded-xl border transition-all ${currentStep === 3 ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' : currentStep > 3 ? 'bg-slate-900 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}>
+                    <span>3. Smart AI Actions</span>
+                  </div>
+                  <div className={`p-3 rounded-xl border transition-all ${currentStep === 4 ? 'bg-emerald-950 border-emerald-500 text-emerald-300 font-bold' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}>
+                    <span>4. Counselor Selection</span>
+                  </div>
+                </div>
+
+                {/* STEP 1: SPEECH INTAKE */}
+                {currentStep === 1 && (
+                  <div className="glass-panel p-6 space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-800">
+                      <div>
+                        <h2 className="text-xl font-bold font-heading text-slate-100">
+                          Step 1: Voice Speech-to-Text Intake
+                        </h2>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          Select an active emergency or past incident sample, or record live speech
+                        </p>
+                      </div>
+
+                      {/* Active vs Past Case Switch */}
+                      <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 font-mono text-xs">
+                        <button
+                          onClick={() => setIsPastCaseToggle(false)}
+                          className={`px-3 py-1.5 rounded-lg transition-all ${!isPastCaseToggle ? 'bg-red-600 text-white font-bold' : 'text-slate-400'}`}
+                        >
+                          🚨 Active Emergency (Now)
+                        </button>
+                        <button
+                          onClick={() => setIsPastCaseToggle(true)}
+                          className={`px-3 py-1.5 rounded-lg transition-all ${isPastCaseToggle ? 'bg-purple-600 text-white font-bold' : 'text-slate-400'}`}
+                        >
+                          ⏳ Past Case (Historical)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-xs font-mono text-slate-400 uppercase font-bold block">CHOOSE SPEECH SAMPLE PRESET:</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {SAMPLE_SPEECH_PRESETS.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => handlePresetChange(p)}
+                            className={`p-4 rounded-xl border text-xs font-mono text-left transition-all ${
+                              selectedPreset.id === p.id ? 'bg-cyan-950 border-cyan-500 text-cyan-200 shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-bold text-sm text-slate-100">{p.title}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${p.isPastCase ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-red-950 text-red-300 border border-red-800'}`}>
+                                {p.isPastCase ? "⏳ PAST CASE" : "🚨 ACTIVE NOW"}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 block line-clamp-2">"{p.speechText}"</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Speech Transcript Output Box */}
+                    <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 min-h-[130px] font-mono text-sm">
+                      <div className="flex justify-between text-xs text-slate-400 border-b border-slate-900 pb-2">
+                        <span>LIVE STT TRANSCRIPT STREAM:</span>
+                        {isRecording && <span className="text-red-400 animate-pulse font-bold">🔴 RECORDING & PROCESSING...</span>}
+                      </div>
+                      <p className="text-slate-100 leading-relaxed font-semibold">
+                        {speechTextStream || selectedPreset.speechText}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      {!isRecording ? (
+                        <button onClick={startSpeechIntake} className="btn-cyber py-3 px-6 text-sm font-semibold">
+                          🎙️ Record Speech Intake
+                        </button>
+                      ) : (
+                        <button onClick={finishSpeechIntake} className="btn-danger py-3 px-6 text-sm font-semibold">
+                          ⏹️ Stop & Score Case
+                        </button>
+                      )}
+
+                      <button onClick={finishSpeechIntake} className="btn-cyber py-3 px-6 text-sm font-semibold">
+                        ➡️ Step 2: AI Scoring & Analysis
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: AI SCORING */}
+                {currentStep === 2 && computedCase && (
+                  <div className="glass-panel p-6 space-y-6">
+                    <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+                      <div>
+                        <h2 className="text-xl font-bold font-heading text-slate-100">
+                          Step 2: AI Distress & Threat Scoring Engine
+                        </h2>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          Evaluates psychological distress, incident severity, and case time-horizon
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase ${computedCase.isPastCase ? 'bg-purple-950 text-purple-300 border border-purple-500' : 'bg-red-950 text-red-300 border border-red-500'}`}>
+                        {computedCase.isPastCase ? "⏳ PAST CASE DETECTED" : "🚨 ACTIVE EMERGENCY (NOW)"}
+                      </span>
+                    </div>
+
+                    {/* Dual Score Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="text-xs font-mono text-slate-400 block">EXPLAINABLE DISTRESS SCORE:</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-extrabold text-cyan-400">{computedCase.distressScore}</span>
+                          <span className="text-xs text-slate-400 font-mono">/ 100</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                          <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full" style={{ width: `${computedCase.distressScore}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="text-xs font-mono text-slate-400 block">INCIDENT SEVERITY SCORE:</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-extrabold text-orange-400">{computedCase.severityScore}</span>
+                          <span className="text-xs text-slate-400 font-mono">/ 100</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                          <div className="bg-gradient-to-r from-yellow-500 to-red-500 h-full" style={{ width: `${computedCase.severityScore}%` }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Siren Alert Text / Rationale Banner */}
+                    {computedCase.sirenAlertText && (
+                      <div className={`p-4 rounded-xl border text-xs font-mono font-bold ${computedCase.isPastCase ? 'bg-purple-950/80 border-purple-500 text-purple-300' : 'bg-red-950/80 border-red-500 text-red-200 animate-pulse'}`}>
+                        {computedCase.sirenAlertText}
+                      </div>
+                    )}
+
+                    {/* Rationale Card */}
+                    <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-1">
+                      <span className="text-slate-400 font-bold uppercase block">💡 AI RATIONALE & CASE ROUTING REASON:</span>
+                      <p className="text-slate-200 font-semibold">{computedCase.simpleReason}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <button onClick={() => setCurrentStep(1)} className="text-xs text-slate-400 hover:text-white font-mono">
+                        ← Back to Step 1
+                      </button>
+                      <button onClick={() => setCurrentStep(3)} className="btn-cyber py-3 px-6 text-sm font-semibold">
+                        ➡️ Step 3: View AI Suggested Actions
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: SMART AI SUGGESTED ACTIONS (ACTIVE VS PAST BRANCHING) */}
+                {currentStep === 3 && computedCase && (
+                  <div className="glass-panel p-6 space-y-6">
+                    <div className="pb-4 border-b border-slate-800 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-xl font-bold font-heading text-slate-100">
+                          Step 3: AI Smart Action Recommendations
+                        </h2>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          {computedCase.isPastCase 
+                            ? "⏳ Past Case Detected: Bypassing emergency dispatch & recommending Counselor & Legal Aid directly."
+                            : "🚨 Active Emergency Detected: Recommending immediate Police / Fire Truck / Ambulance emergency units."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ACTIVE EMERGENCY BRANCH */}
+                    {!computedCase.isPastCase ? (
+                      <div className="space-y-4">
+                        <span className="text-xs font-mono font-bold text-red-400 uppercase block">
+                          🚨 ACTIVE EMERGENCY DISPATCH SUGGESTIONS:
+                        </span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Police */}
+                          <div 
+                            onClick={() => setSelectedAction({ title: "Dispatch Police Patrol Van", unit: "Police" })}
+                            className="p-5 rounded-2xl bg-slate-900 border border-red-500/50 space-y-2 cursor-pointer hover:bg-slate-800/80 transition-all"
+                          >
+                            <div className="text-3xl">🚓</div>
+                            <h3 className="font-bold text-slate-100 text-base">Police PCR Patrol Unit</h3>
+                            <p className="text-xs text-slate-400 font-mono">For active door breach, physical threat, stalking, or violence in progress. SLA: 15 mins.</p>
+                            <span className="text-xs font-mono text-red-400 font-bold block pt-2">⚡ 1-Click Dispatch Police</span>
+                          </div>
+
+                          {/* Fire Truck */}
+                          <div 
+                            onClick={() => setSelectedAction({ title: "Dispatch Fire Truck & Rescue", unit: "Fire" })}
+                            className="p-5 rounded-2xl bg-slate-900 border border-orange-500/50 space-y-2 cursor-pointer hover:bg-slate-800/80 transition-all"
+                          >
+                            <div className="text-3xl">🚒</div>
+                            <h3 className="font-bold text-slate-100 text-base">Fire Truck & Rescue Unit</h3>
+                            <p className="text-xs text-slate-400 font-mono">For active arson, fire hazard, smoke inhalation, or structural rescue emergency.</p>
+                            <span className="text-xs font-mono text-orange-400 font-bold block pt-2">⚡ 1-Click Dispatch Fire Truck</span>
+                          </div>
+
+                          {/* Ambulance */}
+                          <div 
+                            onClick={() => setSelectedAction({ title: "Dispatch Ambulance & EMS", unit: "Ambulance" })}
+                            className="p-5 rounded-2xl bg-slate-900 border border-emerald-500/50 space-y-2 cursor-pointer hover:bg-slate-800/80 transition-all"
+                          >
+                            <div className="text-3xl">🚑</div>
+                            <h3 className="font-bold text-slate-100 text-base">Ambulance & EMS Medical</h3>
+                            <p className="text-xs text-slate-400 font-mono">For physical injuries, acute medical trauma, or emergency hospital transport.</p>
+                            <span className="text-xs font-mono text-emerald-400 font-bold block pt-2">⚡ 1-Click Dispatch Ambulance</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* PAST CASE BRANCH: DIRECT COUNSELOR & LEGAL AID RECOMMENDATION */
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-xl bg-purple-950/60 border border-purple-500/50 text-xs font-mono space-y-1">
+                          <span className="text-purple-300 font-bold uppercase block">⏳ HISTORICAL INCIDENT DETECTED:</span>
+                          <p className="text-slate-200">
+                            Because this incident occurred in the past, active emergency dispatch (Police/Fire/Ambulance) is bypassed. The AI recommends direct certified Counselor appointment and DLSA Legal Counsel.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-5 rounded-2xl bg-slate-900 border border-blue-500/50 space-y-2">
+                            <div className="text-3xl">🧠</div>
+                            <h3 className="font-bold text-slate-100 text-base">Direct Trauma & Crisis Counselor Callback</h3>
+                            <p className="text-xs text-slate-400 font-mono">Connect with certified trauma psychologists to process past abuse, PTSD, or emotional distress.</p>
+                          </div>
+
+                          <div className="p-5 rounded-2xl bg-slate-900 border border-amber-500/50 space-y-2">
+                            <div className="text-3xl">⚖️</div>
+                            <h3 className="font-bold text-slate-100 text-base">DLSA Free Legal Advocate Assignment</h3>
+                            <p className="text-xs text-slate-400 font-mono">Assign a legal advocate for filing past SC/ST PoA complaints, domestic violence notices, or cyber evidence cases.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2">
+                      <button onClick={() => setCurrentStep(2)} className="text-xs text-slate-400 hover:text-white font-mono">
+                        ← Back to Step 2
+                      </button>
+                      <button onClick={() => setActiveTab('directory')} className="btn-cyber py-3 px-6 text-sm font-semibold">
+                        ➡️ Step 4: Choose Certified Counselor ({computedCase.isPastCase ? 'Direct Assignment' : 'Post-Emergency Support'})
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 4: CONFIRMATION SUMMARY */}
+                {currentStep === 4 && selectedCounselor && (
+                  <div className="glass-panel p-6 space-y-6 border-2 border-emerald-500/50">
+                    <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+                      <div className="w-12 h-12 rounded-full bg-emerald-950 border-2 border-emerald-500 flex items-center justify-center text-2xl">
+                        ✓
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold font-heading text-slate-100">
+                          Triage & Counselor Appointment Confirmed!
+                        </h2>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          Case logged in Command Dashboard and assigned to certified counselor.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="text-slate-400 block font-bold">DISPATCH / ACTION ROUTE:</span>
+                        <span className="text-base font-bold text-cyan-400 block">
+                          {computedCase.isPastCase ? "⏳ Direct Past-Case Counselor & Legal Guidance" : "🚨 Active Emergency Response Dispatched"}
+                        </span>
+                        <span className="text-slate-300 block">Logged in Authority Dashboard</span>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="text-slate-400 block font-bold">ASSIGNED CERTIFIED COUNSELOR:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{selectedCounselor.avatar}</span>
+                          <div>
+                            <span className="text-base font-bold text-emerald-300 block">{selectedCounselor.name}</span>
+                            <span className="text-[11px] text-slate-400">{selectedCounselor.role}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button onClick={() => setActiveTab('dashboard')} className="btn-cyber py-3 px-6 text-sm font-semibold">
+                        📊 View in Authority Case Dashboard
+                      </button>
+                      <button onClick={resetWizard} className="px-5 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-sm font-mono">
+                        🔄 Start New Triage
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* COUNSELOR DIRECTORY & REVIEWS */}
+            {(activeTab === 'directory' || (activeTab === 'wizard' && currentStep === 3)) && (
+              <div className="space-y-6">
+                
+                <div className="glass-panel p-6 border-l-4 border-l-cyan-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold font-heading text-slate-100">
+                      Certified Counselor Directory & Victim Reviews
+                    </h2>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">
+                      Select a certified counselor for direct appointment (Available for both active emergencies & past cases)
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                    4 CERTIFIED COUNSELORS ON-CALL
+                  </span>
+                </div>
+
+                {/* Counselor Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {COUNSELORS_DATABASE.map((c) => (
+                    <div key={c.id} className="glass-panel p-6 space-y-4 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl shadow-md">
+                              {c.avatar}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-slate-100 text-base">{c.name}</h3>
+                              <p className="text-xs text-cyan-400 font-mono">{c.role}</p>
+                              <span className="text-[10px] text-slate-500 font-mono">ID: {c.verifiedId}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-right font-mono">
+                            <div className="flex items-center gap-1 text-amber-400 font-bold text-sm justify-end">
+                              <span>⭐ {c.rating}</span>
+                              <span className="text-slate-400 font-normal text-xs">({c.reviewCount})</span>
+                            </div>
+                            <span className="text-[10px] text-emerald-400 block mt-0.5 font-semibold">{c.availability}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {c.specializations.map((spec, i) => (
+                            <span key={i} className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-300">
+                              {spec}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-900 text-xs font-mono italic space-y-1">
+                          <span className="text-[10px] text-amber-400 font-bold uppercase not-italic block">💬 RECENT VICTIM REVIEW:</span>
+                          <p className="text-slate-300">"{c.topReview}"</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleConfirmSelection(c)}
+                        className="btn-cyber w-full justify-center text-xs py-2.5 mt-2"
+                      >
+                        ✓ Select {c.name} & Assign to Case
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+
+            {/* AUTHORITY CASE DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="glass-panel p-6 border-l-4 border-l-cyan-500 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold font-heading text-slate-100">
+                      Authority Case Command Dashboard
+                    </h2>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">
+                      Log of processed Active Emergencies & Past Incident Cases
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950 px-3 py-1 rounded-full border border-cyan-500/40">
+                    {cases.length} CASES LOGGED
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {cases.map((c) => (
+                    <div key={c.id} className={`glass-panel p-6 space-y-4 border-l-4 ${c.isPastCase ? 'border-l-purple-500' : 'border-l-red-500'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-mono font-bold ${c.isPastCase ? 'bg-purple-950 text-purple-300 border border-purple-500' : 'bg-red-950 text-red-300 border border-red-500'}`}>
+                            {c.isPastCase ? "⏳ PAST CASE" : "🚨 ACTIVE EMERGENCY"}
+                          </span>
+                          <span className="font-mono font-bold text-slate-100">{c.id}</span>
+                          <span className="text-xs text-slate-400 font-mono">[{c.channel}]</span>
+                        </div>
+                        <span className="text-xs font-mono text-emerald-400 bg-emerald-950 px-3 py-1 rounded-lg border border-emerald-500/40 font-bold">
+                          {c.status}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono">
+                        <span className="text-slate-400 block font-bold">SPEECH TRANSCRIPT:</span>
+                        <p className="text-slate-200 mt-1 italic font-semibold">"{c.transcript}"</p>
+                      </div>
+
+                      {c.assignedCounselor && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs font-mono">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{c.assignedCounselor.avatar}</span>
+                            <div>
+                              <span className="font-bold text-slate-100 block">{c.assignedCounselor.name}</span>
+                              <span className="text-[11px] text-cyan-400">{c.assignedCounselor.role}</span>
+                            </div>
+                          </div>
+                          <span className="text-amber-400 font-bold">⭐ {c.assignedCounselor.rating} / 5.0</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </main>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
