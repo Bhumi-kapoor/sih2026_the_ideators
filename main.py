@@ -44,10 +44,18 @@ async def process_audio(file: UploadFile = File(...)):
             "distress_markers": ["Active Forced Entry", "Death Threat", "High Pitch Tremor", "Vocal Panic"]
         },
         "layer_3_explainable_scoring": {
-            "engine": "SATYA Explainable AI Scoring Core",
+            "engine": "SATYA DeepSeek-R1 Explainable AI Scoring Core",
             "distress_vulnerability_score": 94,
             "incident_severity_score": 92,
-            "risk_tier": "CRITICAL"
+            "risk_tier": "CRITICAL",
+            "deepseek_triage_suggestion": "🤖 DeepSeek-R1 AI Triage: Active high-threat forced entry detected. Recommending immediate 1.4-min PCR siren dispatch & EMS medical standby.",
+            "suggested_help_actions": [
+                "🚨 Immediate 1.4-min Police PCR Siren Dispatch",
+                "🚑 Medical EMS Standby Alert",
+                "📍 Mobile Signal GPS Triangulation Lock",
+                "🛡️ National SC/ST & Helpline Escalation Desk",
+                "👩‍⚕️ Certified Trauma Counselor Direct Assignment"
+            ]
         },
         "layer_4_smart_action_routing": {
             "routing_action": {
